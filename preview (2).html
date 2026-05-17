@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>네컷사진, 사진 콜라주 에디터</title>
+  <style>
+    :root {
+      --bg: #f5f2ec;
+      --panel: rgba(255, 255, 255, 0.78);
+      --ink: #24211d;
+      --muted: #837a70;
+      --line: rgba(36, 33, 29, 0.12);
+      --accent: #ff6f91;
+      --accent-dark: #dd416f;
+      --shadow: 0 24px 70px rgba(46, 35, 28, 0.14);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Pretendard, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 111, 145, 0.18), transparent 36%),
+        radial-gradient(circle at bottom right, rgba(109, 196, 255, 0.18), transparent 34%),
+        var(--bg);
+    }
+
+    .app {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 34px 22px 54px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 58px);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+    }
+
+    .sub {
+      margin: 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    .creator {
+      margin: 0;
+      color: #9c9185;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 410px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel,
+    .preview-card {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .panel {
+      padding: 18px;
+      position: sticky;
+      top: 18px;
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+
+    .section {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:first-child { padding-top: 0; }
+    .section:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .dropzone {
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      min-height: 132px;
+      padding: 18px;
+      border: 1.5px dashed rgba(36, 33, 29, 0.22);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.42);
+      text-align: center;
+      transition: 0.2s ease;
+      cursor: pointer;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.76);
+      transform: translateY(-1px);
+    }
+
+    .dropzone strong { font-size: 15px; }
+    .dropzone span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    input[type="file"] { display: none; }
+
+    .layout-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .layout-btn {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.58);
+      border-radius: 16px;
+      padding: 12px;
+      color: var(--ink);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .layout-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255, 111, 145, 0.35);
+    }
+
+    .layout-btn.active {
+      background: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 10px 26px rgba(255, 111, 145, 0.18);
+    }
+
+    .layout-icon {
+      height: 54px;
+      margin-bottom: 9px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .layout-icon.four { grid-template-rows: repeat(4, 1fr); }
+    .layout-icon.two-v { grid-template-rows: repeat(2, 1fr); }
+    .layout-icon.two-h { grid-template-columns: repeat(2, 1fr); }
+    .layout-icon.grid4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+    .layout-icon.polaroid { grid-template-rows: 1fr 18px; }
+
+    .layout-icon i {
+      display: block;
+      border-radius: 7px;
+      background: linear-gradient(135deg, rgba(255, 111, 145, 0.38), rgba(109, 196, 255, 0.34));
+    }
+
+    .layout-name {
+      display: block;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+
+    .layout-desc {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .form-row {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .form-row label,
+    .slot-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .toggle-list {
+      display: grid;
+      gap: 9px;
+      margin-bottom: 12px;
+    }
+
+    .toggle-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.56);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .toggle-line small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .toggle-line input {
+      width: 19px;
+      height: 19px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    select,
+    input[type="text"] {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.72);
+      padding: 0 12px;
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 42px;
+      padding: 5px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.72);
+      cursor: pointer;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .slot-tools {
+      display: grid;
+      gap: 10px;
+    }
+
+    .slot-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .slot-btn {
+      min-width: 42px;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.62);
+      color: var(--ink);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .slot-btn.active {
+      border-color: var(--accent);
+      background: #fff;
+      color: var(--accent-dark);
+    }
+
+    .order-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .order-item {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 56px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.62);
+      cursor: grab;
+      user-select: none;
+      transition: 0.16s ease;
+    }
+
+    .order-item:active {
+      cursor: grabbing;
+    }
+
+    .order-item.dragging {
+      opacity: 0.48;
+      transform: scale(0.98);
+    }
+
+    .order-thumb {
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(36, 33, 29, 0.05);
+      object-fit: cover;
+    }
+
+    .order-empty {
+      display: grid;
+      place-items: center;
+      color: rgba(36, 33, 29, 0.36);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .order-title {
+      display: block;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .order-desc {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .order-handle {
+      color: rgba(36, 33, 29, 0.42);
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: -0.12em;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      border: 0;
+      min-height: 48px;
+      border-radius: 16px;
+      padding: 0 16px;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      transition: 0.18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+
+    .primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), #ff9d6c);
+      box-shadow: 0 14px 30px rgba(255, 111, 145, 0.28);
+    }
+
+    .ghost {
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid var(--line);
+    }
+
+    .preview-card {
+      min-height: 760px;
+      padding: 18px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .canvas-wrap {
+      width: 100%;
+      min-height: 680px;
+      display: grid;
+      place-items: center;
+      overflow: auto;
+      padding: 20px;
+      border-radius: 20px;
+      background:
+        linear-gradient(45deg, rgba(36, 33, 29, 0.035) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(36, 33, 29, 0.035) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(36, 33, 29, 0.035) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(36, 33, 29, 0.035) 75%);
+      background-size: 28px 28px;
+      background-position: 0 0, 0 14px, 14px -14px, -14px 0;
+    }
+
+    canvas {
+      max-width: min(100%, 720px);
+      height: auto;
+      box-shadow: 0 28px 70px rgba(36, 33, 29, 0.22);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .mini-note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .mobile-action-bar {
+      display: none;
+    }
+
+    @media (max-width: 1060px) {
+      .workspace { grid-template-columns: 1fr; }
+      .panel { position: static; max-height: none; }
+      .preview-card { min-height: auto; }
+    }
+
+    @media (max-width: 760px) {
+      body {
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .app {
+        padding: 18px 10px 104px;
+      }
+
+      .hero {
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .eyebrow {
+        font-size: 11px;
+        padding: 6px 10px;
+      }
+
+      h1 {
+        font-size: clamp(34px, 12vw, 48px);
+        line-height: 0.94;
+      }
+
+      .sub {
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .creator {
+        font-size: 11px;
+      }
+
+      .workspace {
+        gap: 12px;
+      }
+
+      .preview-card {
+        order: -1;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        padding: 8px;
+        border-radius: 18px;
+      }
+
+      .canvas-wrap {
+        min-height: 300px;
+        max-height: 54vh;
+        padding: 8px;
+        border-radius: 14px;
+        overflow: auto;
+      }
+
+      canvas {
+        max-width: 100%;
+        box-shadow: 0 14px 34px rgba(36, 33, 29, 0.18);
+        touch-action: manipulation;
+      }
+
+      .panel {
+        padding: 14px;
+        border-radius: 18px;
+      }
+
+      .section {
+        padding: 16px 0;
+      }
+
+      .dropzone {
+        min-height: 104px;
+        padding: 14px;
+        border-radius: 16px;
+      }
+
+      .dropzone strong {
+        font-size: 14px;
+      }
+
+      .layout-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .layout-btn {
+        padding: 10px;
+        border-radius: 14px;
+      }
+
+      .layout-icon {
+        height: 42px;
+        margin-bottom: 7px;
+      }
+
+      .inline {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .buttons {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .btn,
+      select,
+      input[type="text"],
+      input[type="color"] {
+        min-height: 52px;
+        font-size: 16px;
+      }
+
+      .toggle-line {
+        align-items: flex-start;
+        min-height: 52px;
+        padding: 12px;
+        border-radius: 15px;
+      }
+
+      .toggle-line input {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 auto;
+      }
+
+      input[type="range"] {
+        height: 32px;
+      }
+
+      .slot-btn {
+        min-width: 48px;
+        min-height: 44px;
+        font-size: 15px;
+      }
+
+      .mobile-action-bar {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        z-index: 50;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 18px 50px rgba(36, 33, 29, 0.18);
+        backdrop-filter: blur(18px);
+      }
+
+      .mobile-action-bar .btn {
+        min-height: 52px;
+        border-radius: 16px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .layout-grid,
+      .buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .mobile-action-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div class="eyebrow">PHOTO BOOTH MAKER</div>
+      <h1>네컷사진,<br />사진 콜라주 에디터</h1>
+      <p class="sub">사진을 올리고 레이아웃을 고른 뒤 프레임, 배경, 둥글기, 문구, 비율 방식을 조절해 PNG로 저장할 수 있어요. 모든 작업은 브라우저 안에서만 처리됩니다.</p>
+      <p class="creator">made by @navibibi</p>
+    </header>
+
+    <section class="workspace">
+      <aside class="panel">
+        <section class="section">
+          <div class="section-title">
+            <span>1. 사진 넣기</span>
+            <span class="hint">여러 장 가능</span>
+          </div>
+          <label class="dropzone" id="dropzone" for="fileInput">
+            <strong>사진 클릭 업로드 / 드래그 앤 드롭</strong>
+            <span>현재 선택된 칸부터 순서대로 들어가요. 모바일에서는 이 박스를 눌러 사진을 선택하세요.</span>
+          </label>
+          <input id="fileInput" type="file" accept="image/*" multiple />
+          <input id="slotFileInput" type="file" accept="image/*" />
+          <p class="mini-note">팁: 미리보기 캔버스에서 사진 칸을 클릭하면 해당 칸을 선택할 수 있어요.</p>
+        </section>
+
+        <section class="section">
+          <div class="section-title"><span>2. 레이아웃 선택</span></div>
+          <div class="layout-grid" id="layoutGrid">
+            <button class="layout-btn active" data-layout="life4" type="button">
+              <span class="layout-icon four"><i></i><i></i><i></i><i></i></span>
+              <span class="layout-name">인생네컷 세로</span>
+              <span class="layout-desc">4장 / 길쭉한 포토부스</span>
+            </button>
+            <button class="layout-btn" data-layout="grid4" type="button">
+              <span class="layout-icon grid4"><i></i><i></i><i></i><i></i></span>
+              <span class="layout-name">4컷 정사각</span>
+              <span class="layout-desc">4장 / SNS 카드형</span>
+            </button>
+            <button class="layout-btn" data-layout="twoVertical" type="button">
+              <span class="layout-icon two-v"><i></i><i></i></span>
+              <span class="layout-name">2컷 세로</span>
+              <span class="layout-desc">2장 / 위아래 배치</span>
+            </button>
+            <button class="layout-btn" data-layout="twoHorizontal" type="button">
+              <span class="layout-icon two-h"><i></i><i></i></span>
+              <span class="layout-name">2컷 가로</span>
+              <span class="layout-desc">2장 / 좌우 배치</span>
+            </button>
+            <button class="layout-btn" data-layout="polaroid" type="button">
+              <span class="layout-icon polaroid"><i></i><i></i></span>
+              <span class="layout-name">폴라로이드</span>
+              <span class="layout-desc">1장 / 하단 문구 넓게</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title"><span>3. 스타일</span></div>
+          <div class="toggle-list">
+            <label class="toggle-line">
+              <span>사진만 콜라주 모드 <small>켜면 배경, 프레임, 문구, 그림자, 바깥 여백 없이 사진만 붙어요.</small></span>
+              <input id="collageOnly" type="checkbox" />
+            </label>
+            <label class="toggle-line">
+              <span>배경 사용 <small>끄면 배경색 없이 투명하게 저장돼요.</small></span>
+              <input id="showBackground" type="checkbox" checked />
+            </label>
+            <label class="toggle-line">
+              <span>프레임 사용 <small>끄면 사진만 배경 위에 배치돼요.</small></span>
+              <input id="showFrame" type="checkbox" checked />
+            </label>
+            <label class="toggle-line">
+              <span>그림자 사용 <small>끄면 저장본도 완전히 납작하게 나와요.</small></span>
+              <input id="showShadow" type="checkbox" checked />
+            </label>
+          </div>
+
+          <div class="inline">
+            <div class="form-row">
+              <label for="frameColor">프레임 색</label>
+              <input id="frameColor" type="color" value="#ffffff" />
+            </div>
+            <div class="form-row">
+              <label for="bgColor">배경 색</label>
+              <input id="bgColor" type="color" value="#f5f2ec" />
+            </div>
+          </div>
+
+          <div class="inline">
+            <div class="form-row">
+              <label for="gapRange">사진 간격</label>
+              <input id="gapRange" type="range" min="0" max="70" value="24" />
+            </div>
+            <div class="form-row">
+              <label for="paddingRange">프레임/바깥 여백</label>
+              <input id="paddingRange" type="range" min="0" max="120" value="54" />
+            </div>
+          </div>
+
+          <div class="inline">
+            <div class="form-row">
+              <label for="radiusRange">안쪽 사진 둥글기</label>
+              <input id="radiusRange" type="range" min="0" max="80" value="22" />
+            </div>
+            <div class="form-row">
+              <label for="outerRadiusRange">바깥쪽 전체 둥글기</label>
+              <input id="outerRadiusRange" type="range" min="0" max="160" value="0" />
+            </div>
+          </div>
+
+          <div class="inline">
+            <div class="form-row">
+              <label for="shadowRange">그림자</label>
+              <input id="shadowRange" type="range" min="0" max="60" value="18" />
+            </div>
+            <div class="form-row">
+              <label for="fitSelect">사진 맞춤</label>
+              <select id="fitSelect">
+                <option value="cover">꽉 채우기</option>
+                <option value="contain">전체 보이기</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="inline">
+            <div class="form-row">
+              <label for="filterSelect">사진 필터</label>
+              <select id="filterSelect">
+                <option value="none">기본</option>
+                <option value="soft">소프트</option>
+                <option value="warm">따뜻한 필름</option>
+                <option value="cool">쿨톤</option>
+                <option value="bw">흑백</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="ratioMode">사진 비율 방식</label>
+              <select id="ratioMode">
+                <option value="layout">레이아웃 비율대로</option>
+                <option value="original">원본 사진 비율대로</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title"><span>4. 문구</span></div>
+          <div class="toggle-list">
+            <label class="toggle-line">
+              <span>문구 영역 사용 <small>끄면 타이틀/날짜 공간 없이 사진만 배치돼요.</small></span>
+              <input id="showText" type="checkbox" checked />
+            </label>
+          </div>
+          <div class="form-row">
+            <label for="titleText">상단/하단 타이틀</label>
+            <input id="titleText" type="text" value="OUR MOMENT" maxlength="32" />
+          </div>
+          <div class="form-row">
+            <label for="captionText">짧은 캡션</label>
+            <input id="captionText" type="text" value="2026.05.17" maxlength="40" />
+          </div>
+          <div class="inline">
+            <div class="form-row">
+              <label for="textColor">글자 색</label>
+              <input id="textColor" type="color" value="#24211d" />
+            </div>
+            <div class="form-row">
+              <label for="textSize">글자 크기</label>
+              <input id="textSize" type="range" min="20" max="64" value="34" />
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">
+            <span>5. 선택 슬롯 보정</span>
+            <span class="hint" id="slotHint">1번 선택 중</span>
+          </div>
+          <div class="slot-tools">
+            <div class="slot-picker" id="slotPicker"></div>
+            <div class="buttons">
+              <button class="btn ghost" id="replaceSlotBtn" type="button">선택 칸 교체</button>
+              <button class="btn ghost" id="deleteSlotBtn" type="button">선택 칸 삭제</button>
+            </div>
+            <div class="form-row">
+              <label>사진 순서 바꾸기</label>
+              <div class="order-list" id="orderList"></div>
+              <p class="mini-note">각 항목을 드래그해서 순서를 바꿀 수 있어요. 빈 칸도 함께 이동됩니다.</p>
+            </div>
+            <div class="form-row">
+              <label for="zoomRange">확대/축소</label>
+              <input id="zoomRange" type="range" min="0.5" max="2.4" value="1" step="0.01" />
+            </div>
+            <div class="inline">
+              <div class="form-row">
+                <label for="xRange">좌우 이동</label>
+                <input id="xRange" type="range" min="-100" max="100" value="0" />
+              </div>
+              <div class="form-row">
+                <label for="yRange">상하 이동</label>
+                <input id="yRange" type="range" min="-100" max="100" value="0" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="buttons">
+            <button class="btn ghost" id="resetBtn" type="button">초기화</button>
+            <button class="btn primary" id="saveBtn" type="button">PNG 저장</button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="preview-card">
+        <div class="canvas-wrap">
+          <canvas id="photoCanvas" width="800" height="1800" aria-label="사진 미리보기"></canvas>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="mobile-action-bar" aria-label="모바일 빠른 작업">
+    <button class="btn ghost" id="mobileUploadBtn" type="button">사진 추가</button>
+    <button class="btn primary" id="mobileSaveBtn" type="button">PNG 저장</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('photoCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const fileInput = document.getElementById('fileInput');
+    const slotFileInput = document.getElementById('slotFileInput');
+    const replaceSlotBtn = document.getElementById('replaceSlotBtn');
+    const deleteSlotBtn = document.getElementById('deleteSlotBtn');
+    const dropzone = document.getElementById('dropzone');
+    const layoutGrid = document.getElementById('layoutGrid');
+    const slotPicker = document.getElementById('slotPicker');
+    const slotHint = document.getElementById('slotHint');
+    const orderList = document.getElementById('orderList');
+    const mobileUploadBtn = document.getElementById('mobileUploadBtn');
+    const mobileSaveBtn = document.getElementById('mobileSaveBtn');
+
+    const controls = {
+      frameColor: document.getElementById('frameColor'),
+      bgColor: document.getElementById('bgColor'),
+      gapRange: document.getElementById('gapRange'),
+      paddingRange: document.getElementById('paddingRange'),
+      radiusRange: document.getElementById('radiusRange'),
+      outerRadiusRange: document.getElementById('outerRadiusRange'),
+      shadowRange: document.getElementById('shadowRange'),
+      filterSelect: document.getElementById('filterSelect'),
+      fitSelect: document.getElementById('fitSelect'),
+      ratioMode: document.getElementById('ratioMode'),
+      titleText: document.getElementById('titleText'),
+      captionText: document.getElementById('captionText'),
+      textColor: document.getElementById('textColor'),
+      textSize: document.getElementById('textSize'),
+      collageOnly: document.getElementById('collageOnly'),
+      showBackground: document.getElementById('showBackground'),
+      showFrame: document.getElementById('showFrame'),
+      showShadow: document.getElementById('showShadow'),
+      showText: document.getElementById('showText'),
+      zoomRange: document.getElementById('zoomRange'),
+      xRange: document.getElementById('xRange'),
+      yRange: document.getElementById('yRange'),
+    };
+
+    const layouts = {
+      life4: {
+        name: '인생네컷 세로', width: 800, height: 1800, slots: 4, textArea: 145,
+        getRects(w, h, pad, gap, textArea) {
+          const innerW = w - pad * 2;
+          const usableH = h - pad * 2 - textArea;
+          const rectH = (usableH - gap * 3) / 4;
+          return Array.from({ length: 4 }, (_, i) => ({ x: pad, y: pad + i * (rectH + gap), w: innerW, h: rectH }));
+        },
+      },
+      grid4: {
+        name: '4컷 정사각', width: 1200, height: 1200, slots: 4, textArea: 120,
+        getRects(w, h, pad, gap, textArea) {
+          const innerW = w - pad * 2;
+          const usableH = h - pad * 2 - textArea;
+          const cellW = (innerW - gap) / 2;
+          const cellH = (usableH - gap) / 2;
+          return [0, 1, 2, 3].map((i) => ({ x: pad + (i % 2) * (cellW + gap), y: pad + Math.floor(i / 2) * (cellH + gap), w: cellW, h: cellH }));
+        },
+      },
+      twoVertical: {
+        name: '2컷 세로', width: 800, height: 1300, slots: 2, textArea: 125,
+        getRects(w, h, pad, gap, textArea) {
+          const innerW = w - pad * 2;
+          const usableH = h - pad * 2 - textArea;
+          const rectH = (usableH - gap) / 2;
+          return [0, 1].map((i) => ({ x: pad, y: pad + i * (rectH + gap), w: innerW, h: rectH }));
+        },
+      },
+      twoHorizontal: {
+        name: '2컷 가로', width: 1400, height: 850, slots: 2, textArea: 110,
+        getRects(w, h, pad, gap, textArea) {
+          const innerW = w - pad * 2;
+          const usableH = h - pad * 2 - textArea;
+          const rectW = (innerW - gap) / 2;
+          return [0, 1].map((i) => ({ x: pad + i * (rectW + gap), y: pad, w: rectW, h: usableH }));
+        },
+      },
+      polaroid: {
+        name: '폴라로이드', width: 900, height: 1100, slots: 1, textArea: 220,
+        getRects(w, h, pad, gap, textArea) {
+          return [{ x: pad, y: pad, w: w - pad * 2, h: h - pad * 2 - textArea }];
+        },
+      },
+    };
+
+    const state = {
+      layout: 'life4',
+      selectedSlot: 0,
+      images: Array.from({ length: 4 }, () => null),
+      transforms: Array.from({ length: 4 }, () => ({ zoom: 1, x: 0, y: 0 })),
+      lastRects: [],
+    };
+
+    function activeLayout() { return layouts[state.layout]; }
+
+    function ensureStateSize() {
+      const count = activeLayout().slots;
+      while (state.images.length < count) state.images.push(null);
+      while (state.transforms.length < count) state.transforms.push({ zoom: 1, x: 0, y: 0 });
+      if (state.selectedSlot >= count) state.selectedSlot = count - 1;
+      if (state.selectedSlot < 0) state.selectedSlot = 0;
+    }
+
+    function roundedRectPath(context, x, y, w, h, r) {
+      const radius = Math.max(0, Math.min(r, w / 2, h / 2));
+      context.beginPath();
+      context.moveTo(x + radius, y);
+      context.lineTo(x + w - radius, y);
+      context.quadraticCurveTo(x + w, y, x + w, y + radius);
+      context.lineTo(x + w, y + h - radius);
+      context.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+      context.lineTo(x + radius, y + h);
+      context.quadraticCurveTo(x, y + h, x, y + h - radius);
+      context.lineTo(x, y + radius);
+      context.quadraticCurveTo(x, y, x + radius, y);
+      context.closePath();
+    }
+
+    function getFilter() {
+      switch (controls.filterSelect.value) {
+        case 'soft': return 'brightness(1.04) contrast(0.94) saturate(0.92)';
+        case 'warm': return 'brightness(1.03) contrast(0.98) saturate(1.12) sepia(0.13)';
+        case 'cool': return 'brightness(1.02) contrast(1.02) saturate(0.96) hue-rotate(350deg)';
+        case 'bw': return 'grayscale(1) contrast(1.04)';
+        default: return 'none';
+      }
+    }
+
+    function getImageAspect(index, fallback = 1) {
+      const img = state.images[index];
+      if (!img) return fallback;
+      const aspect = img.width / img.height;
+      return Number.isFinite(aspect) && aspect > 0 ? aspect : fallback;
+    }
+
+    function sum(values) { return values.reduce((total, value) => total + value, 0); }
+
+    function getRenderOptions() {
+      const layout = activeLayout();
+      const isCollageOnly = controls.collageOnly.checked;
+      return {
+        layout,
+        isCollageOnly,
+        ratioMode: controls.ratioMode.value,
+        pad: isCollageOnly ? 0 : Number(controls.paddingRange.value),
+        gap: Number(controls.gapRange.value),
+        shadow: (!isCollageOnly && controls.showShadow.checked) ? Number(controls.shadowRange.value) : 0,
+        textArea: (!isCollageOnly && controls.showText.checked) ? layout.textArea : 0,
+        hasFrame: !isCollageOnly && controls.showFrame.checked,
+        hasBackground: !isCollageOnly && controls.showBackground.checked,
+        hasText: !isCollageOnly && controls.showText.checked,
+        innerRadius: Number(controls.radiusRange.value),
+        outerRadius: Number(controls.outerRadiusRange.value),
+      };
+    }
+
+    function getOriginalModeCanvasSize(options) {
+      const layout = options.layout;
+      const pad = options.pad;
+      const gap = options.gap;
+      const textArea = options.textArea;
+
+      if (state.layout === 'life4') {
+        const width = layout.width;
+        const innerW = Math.max(1, width - pad * 2);
+        const heights = Array.from({ length: 4 }, (_, i) => innerW / getImageAspect(i, 3 / 4));
+        return { width, height: Math.ceil(pad * 2 + sum(heights) + gap * 3 + textArea) };
+      }
+      if (state.layout === 'twoVertical') {
+        const width = layout.width;
+        const innerW = Math.max(1, width - pad * 2);
+        const heights = Array.from({ length: 2 }, (_, i) => innerW / getImageAspect(i, 4 / 5));
+        return { width, height: Math.ceil(pad * 2 + sum(heights) + gap + textArea) };
+      }
+      if (state.layout === 'twoHorizontal') {
+        const height = layout.height;
+        const usableH = Math.max(1, height - pad * 2 - textArea);
+        const widths = Array.from({ length: 2 }, (_, i) => usableH * getImageAspect(i, 4 / 3));
+        return { width: Math.ceil(pad * 2 + sum(widths) + gap), height };
+      }
+      if (state.layout === 'grid4') {
+        const width = layout.width;
+        const innerW = Math.max(1, width - pad * 2);
+        const colW = Math.max(1, (innerW - gap) / 2);
+        const h0 = colW / getImageAspect(0, 1);
+        const h1 = colW / getImageAspect(1, 1);
+        const h2 = colW / getImageAspect(2, 1);
+        const h3 = colW / getImageAspect(3, 1);
+        const leftColumnH = h0 + h2 + gap;
+        const rightColumnH = h1 + h3 + gap;
+        return { width, height: Math.ceil(pad * 2 + Math.max(leftColumnH, rightColumnH) + textArea) };
+      }
+      if (state.layout === 'polaroid') {
+        const width = layout.width;
+        const innerW = Math.max(1, width - pad * 2);
+        const photoH = innerW / getImageAspect(0, 1);
+        return { width, height: Math.ceil(pad * 2 + photoH + textArea) };
+      }
+      return { width: layout.width, height: layout.height };
+    }
+
+    function getCanvasSize(options) {
+      if (options.ratioMode === 'layout') {
+        return { width: options.layout.width, height: options.layout.height };
+      }
+      return getOriginalModeCanvasSize(options);
+    }
+
+    function getRectsForCurrentLayout(w, h, options) {
+      const layout = options.layout;
+      const pad = options.pad;
+      const gap = options.gap;
+      const textArea = options.textArea;
+
+      if (options.ratioMode === 'layout') return layout.getRects(w, h, pad, gap, textArea);
+
+      const innerW = Math.max(1, w - pad * 2);
+      const usableH = Math.max(1, h - pad * 2 - textArea);
+
+      if (state.layout === 'life4') {
+        let y = pad;
+        return Array.from({ length: 4 }, (_, i) => {
+          const rectH = innerW / getImageAspect(i, 3 / 4);
+          const rect = { x: pad, y, w: innerW, h: rectH };
+          y += rectH + gap;
+          return rect;
+        });
+      }
+      if (state.layout === 'twoVertical') {
+        let y = pad;
+        return Array.from({ length: 2 }, (_, i) => {
+          const rectH = innerW / getImageAspect(i, 4 / 5);
+          const rect = { x: pad, y, w: innerW, h: rectH };
+          y += rectH + gap;
+          return rect;
+        });
+      }
+      if (state.layout === 'twoHorizontal') {
+        let x = pad;
+        return Array.from({ length: 2 }, (_, i) => {
+          const rectW = usableH * getImageAspect(i, 4 / 3);
+          const rect = { x, y: pad, w: rectW, h: usableH };
+          x += rectW + gap;
+          return rect;
+        });
+      }
+      if (state.layout === 'grid4') {
+        const colW = Math.max(1, (innerW - gap) / 2);
+        const leftX = pad;
+        const rightX = pad + colW + gap;
+        const h0 = colW / getImageAspect(0, 1);
+        const h1 = colW / getImageAspect(1, 1);
+        const h2 = colW / getImageAspect(2, 1);
+        const h3 = colW / getImageAspect(3, 1);
+        return [
+          { x: leftX, y: pad, w: colW, h: h0 },
+          { x: rightX, y: pad, w: colW, h: h1 },
+          { x: leftX, y: pad + h0 + gap, w: colW, h: h2 },
+          { x: rightX, y: pad + h1 + gap, w: colW, h: h3 },
+        ];
+      }
+      if (state.layout === 'polaroid') {
+        const rectH = innerW / getImageAspect(0, 1);
+        return [{ x: pad, y: pad, w: innerW, h: rectH }];
+      }
+      return layout.getRects(w, h, pad, gap, textArea);
+    }
+
+    function drawImageIntoRect(context, img, rect, transform, fitMode, innerRadius, drawEmpty = true) {
+      context.save();
+      roundedRectPath(context, rect.x, rect.y, rect.w, rect.h, innerRadius);
+      context.clip();
+
+      if (!img) {
+        if (drawEmpty) {
+          context.fillStyle = 'rgba(36, 33, 29, 0.045)';
+          context.fillRect(rect.x, rect.y, rect.w, rect.h);
+          context.strokeStyle = 'rgba(36, 33, 29, 0.12)';
+          context.lineWidth = 3;
+          context.setLineDash([16, 14]);
+          roundedRectPath(context, rect.x, rect.y, rect.w, rect.h, innerRadius);
+          context.stroke();
+          context.setLineDash([]);
+          context.fillStyle = 'rgba(36, 33, 29, 0.42)';
+          context.textAlign = 'center';
+          context.textBaseline = 'middle';
+          context.font = '800 28px Pretendard, sans-serif';
+          context.fillText('사진을 넣어주세요', rect.x + rect.w / 2, rect.y + rect.h / 2);
+        }
+        context.restore();
+        return;
+      }
+
+      const scaleBase = fitMode === 'contain' ? Math.min(rect.w / img.width, rect.h / img.height) : Math.max(rect.w / img.width, rect.h / img.height);
+      const scale = scaleBase * transform.zoom;
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      const offsetX = (transform.x / 100) * rect.w * 0.5;
+      const offsetY = (transform.y / 100) * rect.h * 0.5;
+      const dx = rect.x + (rect.w - drawW) / 2 + offsetX;
+      const dy = rect.y + (rect.h - drawH) / 2 + offsetY;
+
+      context.filter = getFilter();
+      context.drawImage(img, dx, dy, drawW, drawH);
+      context.filter = 'none';
+      context.restore();
+    }
+
+    function drawText(context, options) {
+      const title = controls.titleText.value.trim();
+      const caption = controls.captionText.value.trim();
+      const textColor = controls.textColor.value;
+      const size = Number(controls.textSize.value);
+      const baseY = context.canvas.height - options.pad - options.textArea / 2;
+
+      context.save();
+      context.fillStyle = textColor;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+
+      if (state.layout === 'polaroid') {
+        context.font = `900 ${size + 6}px Pretendard, sans-serif`;
+        if (title) context.fillText(title, context.canvas.width / 2, baseY - 26);
+        context.font = `700 ${Math.max(20, size * 0.62)}px Pretendard, sans-serif`;
+        context.globalAlpha = 0.72;
+        if (caption) context.fillText(caption, context.canvas.width / 2, baseY + 34);
+      } else {
+        context.font = `900 ${size}px Pretendard, sans-serif`;
+        if (title) context.fillText(title, context.canvas.width / 2, baseY - 16);
+        context.font = `700 ${Math.max(18, size * 0.54)}px Pretendard, sans-serif`;
+        context.globalAlpha = 0.72;
+        if (caption) context.fillText(caption, context.canvas.width / 2, baseY + 28);
+      }
+
+      context.restore();
+    }
+
+    function drawSelectedOutline(context, options) {
+      const rect = state.lastRects[state.selectedSlot];
+      if (!rect) return;
+      context.save();
+      roundedRectPath(context, rect.x - 8, rect.y - 8, rect.w + 16, rect.h + 16, options.innerRadius + 8);
+      context.strokeStyle = 'rgba(255, 111, 145, 0.9)';
+      context.lineWidth = 6;
+      context.stroke();
+      context.restore();
+    }
+
+    function renderTo(targetCanvas, targetCtx, withSelection = false) {
+      ensureStateSize();
+      const options = getRenderOptions();
+      const canvasSize = getCanvasSize(options);
+
+      targetCanvas.width = canvasSize.width;
+      targetCanvas.height = canvasSize.height;
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+
+      targetCtx.save();
+      if (options.outerRadius > 0) {
+        roundedRectPath(targetCtx, 0, 0, targetCanvas.width, targetCanvas.height, options.outerRadius);
+        targetCtx.clip();
+      }
+
+      if (options.hasBackground) {
+        targetCtx.fillStyle = controls.bgColor.value;
+        targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+      }
+
+      if (options.hasFrame) {
+        const outerPad = Math.max(8, options.pad * 0.35);
+        targetCtx.save();
+        if (options.shadow > 0) {
+          targetCtx.shadowColor = `rgba(36, 33, 29, ${0.10 + options.shadow / 500})`;
+          targetCtx.shadowBlur = options.shadow * 1.8;
+          targetCtx.shadowOffsetY = options.shadow * 0.6;
+        }
+        roundedRectPath(targetCtx, outerPad, outerPad, targetCanvas.width - outerPad * 2, targetCanvas.height - outerPad * 2, Math.max(18, options.innerRadius + 18));
+        targetCtx.fillStyle = controls.frameColor.value;
+        targetCtx.fill();
+        targetCtx.restore();
+      }
+
+      const rects = getRectsForCurrentLayout(targetCanvas.width, targetCanvas.height, options);
+      state.lastRects = rects;
+
+      rects.forEach((rect, index) => {
+        const shouldDrawEmpty = withSelection || !options.isCollageOnly;
+        drawImageIntoRect(targetCtx, state.images[index], rect, state.transforms[index], controls.fitSelect.value, options.innerRadius, shouldDrawEmpty);
+      });
+
+      if (options.hasText) drawText(targetCtx, options);
+      targetCtx.restore();
+      if (withSelection) drawSelectedOutline(targetCtx, options);
+    }
+
+    function render() {
+      const options = getRenderOptions();
+      canvas.style.borderRadius = `${Math.min(options.outerRadius, 160)}px`;
+      renderTo(canvas, ctx, true);
+      syncSlotControls();
+      buildOrderList();
+    }
+
+    function syncSlotControls() {
+      ensureStateSize();
+      const t = state.transforms[state.selectedSlot];
+      slotHint.textContent = `${state.selectedSlot + 1}번 선택 중`;
+      controls.zoomRange.value = t.zoom;
+      controls.xRange.value = t.x;
+      controls.yRange.value = t.y;
+      [...slotPicker.querySelectorAll('.slot-btn')].forEach((btn, index) => btn.classList.toggle('active', index === state.selectedSlot));
+    }
+
+    function buildOrderList() {
+      ensureStateSize();
+      if (!orderList) return;
+      orderList.innerHTML = '';
+
+      for (let i = 0; i < activeLayout().slots; i += 1) {
+        const item = document.createElement('div');
+        item.className = 'order-item';
+        item.draggable = true;
+        item.dataset.index = i;
+
+        const img = state.images[i];
+        const thumb = img ? document.createElement('img') : document.createElement('div');
+        thumb.className = img ? 'order-thumb' : 'order-thumb order-empty';
+        if (img) {
+          thumb.src = img.src;
+          thumb.alt = `${i + 1}번 사진`;
+        } else {
+          thumb.textContent = 'EMPTY';
+        }
+
+        const text = document.createElement('div');
+        text.innerHTML = `<span class="order-title">${i + 1}번 칸</span><span class="order-desc">드래그해서 위치 변경</span>`;
+
+        const handle = document.createElement('div');
+        handle.className = 'order-handle';
+        handle.textContent = '⋮⋮';
+
+        item.append(thumb, text, handle);
+
+        item.addEventListener('click', () => {
+          state.selectedSlot = Number(item.dataset.index);
+          render();
+        });
+
+        item.addEventListener('dragstart', (event) => {
+          event.dataTransfer.setData('text/plain', item.dataset.index);
+          event.dataTransfer.effectAllowed = 'move';
+          item.classList.add('dragging');
+        });
+
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+        });
+
+        item.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+        });
+
+        item.addEventListener('drop', (event) => {
+          event.preventDefault();
+          const fromIndex = Number(event.dataTransfer.getData('text/plain'));
+          const toIndex = Number(item.dataset.index);
+          if (Number.isNaN(fromIndex) || fromIndex === toIndex) return;
+          moveSlot(fromIndex, toIndex);
+        });
+
+        orderList.appendChild(item);
+      }
+    }
+
+    function moveSlot(fromIndex, toIndex) {
+      const slotCount = activeLayout().slots;
+      if (fromIndex < 0 || fromIndex >= slotCount || toIndex < 0 || toIndex >= slotCount) return;
+
+      const images = state.images.slice(0, slotCount);
+      const transforms = state.transforms.slice(0, slotCount);
+
+      const [movedImage] = images.splice(fromIndex, 1);
+      const [movedTransform] = transforms.splice(fromIndex, 1);
+
+      images.splice(toIndex, 0, movedImage);
+      transforms.splice(toIndex, 0, movedTransform);
+
+      for (let i = 0; i < slotCount; i += 1) {
+        state.images[i] = images[i] || null;
+        state.transforms[i] = transforms[i] || { zoom: 1, x: 0, y: 0 };
+      }
+
+      state.selectedSlot = toIndex;
+      render();
+    }
+
+    function buildSlotPicker() {
+      ensureStateSize();
+      slotPicker.innerHTML = '';
+      for (let i = 0; i < activeLayout().slots; i += 1) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'slot-btn';
+        button.textContent = i + 1;
+        button.addEventListener('click', () => { state.selectedSlot = i; render(); });
+        slotPicker.appendChild(button);
+      }
+    }
+
+    function loadFileToSlot(file, slotIndex) {
+      if (!file || !file.type.startsWith('image/')) return;
+      if (slotIndex < 0 || slotIndex >= activeLayout().slots) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          state.images[slotIndex] = img;
+          state.transforms[slotIndex] = { zoom: 1, x: 0, y: 0 };
+          state.selectedSlot = slotIndex;
+          render();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function readFiles(files, startSlot = state.selectedSlot) {
+      const imageFiles = [...files].filter(file => file.type.startsWith('image/'));
+      if (!imageFiles.length) return;
+
+      const slotCount = activeLayout().slots;
+      let slotIndex = Math.max(0, Math.min(startSlot, slotCount - 1));
+      imageFiles.forEach((file) => {
+        if (slotIndex >= slotCount) return;
+        loadFileToSlot(file, slotIndex);
+        slotIndex += 1;
+      });
+    }
+
+    fileInput.addEventListener('change', (event) => { readFiles(event.target.files, state.selectedSlot); fileInput.value = ''; });
+    slotFileInput.addEventListener('change', (event) => { const file = event.target.files[0]; loadFileToSlot(file, state.selectedSlot); slotFileInput.value = ''; });
+    replaceSlotBtn.addEventListener('click', () => slotFileInput.click());
+    deleteSlotBtn.addEventListener('click', () => { state.images[state.selectedSlot] = null; state.transforms[state.selectedSlot] = { zoom: 1, x: 0, y: 0 }; render(); });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.addEventListener(eventName, (event) => {
+        event.preventDefault();
+      });
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropzone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropzone.classList.remove('dragover');
+      });
+    });
+
+    dropzone.addEventListener('drop', (event) => {
+      const files = event.dataTransfer?.files;
+      if (files && files.length) readFiles(files, state.selectedSlot);
+    });
+
+    canvas.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    });
+
+    canvas.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const files = event.dataTransfer?.files;
+      if (files && files.length) readFiles(files, state.selectedSlot);
+    });
+
+    layoutGrid.addEventListener('click', (event) => {
+      const button = event.target.closest('.layout-btn');
+      if (!button) return;
+      state.layout = button.dataset.layout;
+      document.querySelectorAll('.layout-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      ensureStateSize();
+      buildSlotPicker();
+      render();
+    });
+
+    Object.entries(controls).forEach(([key, input]) => {
+      if (['zoomRange', 'xRange', 'yRange'].includes(key)) return;
+      input.addEventListener('input', render);
+      input.addEventListener('change', render);
+    });
+
+    controls.zoomRange.addEventListener('input', () => { state.transforms[state.selectedSlot].zoom = Number(controls.zoomRange.value); render(); });
+    controls.xRange.addEventListener('input', () => { state.transforms[state.selectedSlot].x = Number(controls.xRange.value); render(); });
+    controls.yRange.addEventListener('input', () => { state.transforms[state.selectedSlot].y = Number(controls.yRange.value); render(); });
+
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+      const index = state.lastRects.findIndex(slot => x >= slot.x && x <= slot.x + slot.w && y >= slot.y && y <= slot.y + slot.h);
+      if (index >= 0) { state.selectedSlot = index; render(); }
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      state.images = Array.from({ length: 4 }, () => null);
+      state.transforms = Array.from({ length: 4 }, () => ({ zoom: 1, x: 0, y: 0 }));
+      state.selectedSlot = 0;
+      fileInput.value = '';
+      slotFileInput.value = '';
+      render();
+    });
+
+    mobileUploadBtn.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    mobileSaveBtn.addEventListener('click', () => {
+      document.getElementById('saveBtn').click();
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      renderTo(tempCanvas, tempCtx, false);
+
+      const now = new Date();
+      const stamp = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+      ].join('');
+
+      tempCanvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `photo-editor-${activeLayout().name}-${stamp}.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        render();
+      }, 'image/png');
+    });
+
+    buildSlotPicker();
+    buildOrderList();
+    render();
+  </script>
+</body>
+</html>
